@@ -1,0 +1,19 @@
+{
+    "name": "aarondb_edge",
+    "version": "1.0.0",
+    "description": "Edge-native AaronDB with Honi orchestration",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "build": "gleam build",
+        "dev": "wrangler dev",
+        "deploy": "wrangler deploy"
+    },
+    "dependencies": {
+        "@stukennedy/honi": "^0.5.0",
+        "honi-cf": "^0.4.0"
+    },
+    "devDependencies": {
+        "wrangler": "^3.0.0"
+    }
+}
