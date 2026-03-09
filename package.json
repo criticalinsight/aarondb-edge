@@ -1,7 +1,9 @@
 {
     "name": "@criticalinsight/aarondb-edge",
     "version": "1.1.0",
-    "description": "Edge-native Datalog engine for sovereign agents. De-coupled from Cloudflare Workers but compatible.",
+    "author": "Critical Insight",
+    "homepage": "https://github.com/criticalinsight/aarondb-edge",
+    "description": "Edge-native Datalog engine for sovereign agents.",
     "main": "./src/index.js",
     "module": "./src/index.js",
     "type": "module",
@@ -13,6 +15,7 @@
     "exports": {
         ".": "./src/index.js",
         "./worker": "./src/worker.js",
+        "./q": "./build/dev/javascript/aarondb_edge/aarondb_edge/q.mjs",
         "./engine": "./build/dev/javascript/aarondb_edge/aarondb_edge/engine.mjs"
     },
     "scripts": {

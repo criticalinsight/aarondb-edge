@@ -5,6 +5,7 @@ import { ref, Str, Int, Float, Bool, Assert, Retract, All, new_datom, cosine_sim
 import { insert_eavt, insert_aevt } from "../build/dev/javascript/aarondb_edge/aarondb_edge/index.mjs";
 import { transact, TxOp } from "../build/dev/javascript/aarondb_edge/aarondb_edge/transaction.mjs";
 import { toList } from "../build/dev/javascript/aarondb_edge/gleam.mjs";
+import { AaronDBState } from "./worker.js";
 import * as $dict from "../build/dev/javascript/gleam_stdlib/gleam/dict.mjs";
 import * as $ast from "../build/dev/javascript/aarondb_edge/aarondb_edge/shared/ast.mjs";
 
@@ -152,5 +153,6 @@ export {
     insert_eavt,
     insert_aevt,
     transact,
-    TxOp
+    TxOp,
+    AaronDBState
 };
