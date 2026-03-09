@@ -17,6 +17,19 @@ import * as Dict from "../build/dev/javascript/gleam_stdlib/gleam/dict.mjs";
 import * as List from "../build/dev/javascript/gleam_stdlib/gleam/list.mjs";
 // @ts-ignore
 import { toList, Ok } from "../build/dev/javascript/aarondb_edge/gleam.mjs";
+// @ts-ignore
+import { Some, None } from "../build/dev/javascript/gleam_stdlib/gleam/option.mjs";
+
+function makeDb() {
+    return State.new_state();
+}
+
+function insertDatom(db: any, e: number, a: string, v: any) {
+    const f = Fact.new_datom(Fact.ref(e), a, v, 1, 0, Fact.Operation$Assert());
+    db.eavt = Index.insert_eavt(db.eavt, f, Fact.Retention$All());
+    db.aevt = Index.insert_aevt(db.aevt, f, Fact.Retention$All());
+    return db;
+}
 
 describe("AaronDB Engine Coverage", () => {
     test("Datalog: Simple Fact Retrieval", () => {
@@ -315,5 +328,71 @@ describe("AaronDB Engine Coverage", () => {
                 expect(decoded[0][0]).toEqual(v);
             }
         });
+    });
+
+    test("Datalog: Descending Order and Offset", () => {
+        let db = makeDb();
+        db = insertDatom(db, 1, "age", new Fact.Int(30));
+        db = insertDatom(db, 2, "age", new Fact.Int(25));
+        db = insertDatom(db, 3, "age", new Fact.Int(40));
+
+        let q = Q.new$();
+        q = Q.where(q, Q.v("e"), "age", Q.v("v"));
+        let q3 = Q.order_by(q, "v", Ast.OrderDirection$Desc());
+        q3 = Q.limit(q3, 2);
+        q3 = Q.offset(q3, 1);
+
+        const result = Engine.run(db, Q.to_query(q3));
+        const rows = result.rows.toArray();
+        expect(rows.length).toBe(2);
+        // Desc: 40, 30, 25. Offset 1 -> 30, 25.
+        expect(Dict.get(rows[0], "v")[0]).toEqual(new Fact.Int(30));
+        expect(Dict.get(rows[1], "v")[0]).toEqual(new Fact.Int(25));
+    });
+
+    test("Datalog: Predicates Or, Neq, Gt edge cases", () => {
+        let db = makeDb();
+        db = insertDatom(db, 1, "score", new Fact.Int(10));
+        db = insertDatom(db, 2, "score", new Fact.Int(20));
+
+        let q = Q.new$();
+        q = Q.where(q, Q.v("e"), "score", Q.v("s"));
+
+        // Or(Eq(s, 10), Neq(s, 20))
+        const p_or = Ast.BodyClause$Filter(
+            Ast.Expression$Or(
+                Ast.Expression$Eq(new Ast.Var("s"), Ast.Part$Val(new Fact.Int(10))),
+                Ast.Expression$Neq(new Ast.Var("s"), Ast.Part$Val(new Fact.Int(20)))
+            )
+        );
+
+        q.clauses = List.append(q.clauses, toList([p_or]));
+
+        const result = Engine.run(db, Q.to_query(q));
+        const rows = result.rows.toArray();
+        console.log("Rows OR:", rows);
+        expect(rows.length).toBe(1);
+        expect(Dict.get(rows[0], "s")[0]).toEqual(new Fact.Int(10));
+    });
+
+    test("Datalog: Engine Uid and Bind edge cases", () => {
+        let db = makeDb();
+        db = insertDatom(db, 100, "name", new Fact.Str("Alice"));
+        let q = Q.new$();
+        // Positive with Uid and Val to test non-variable e_val and v_val
+        const b1 = Ast.BodyClause$Positive([
+            new Ast.Uid(Fact.EntityId$EntityId(100)),
+            "name",
+            Ast.Part$Val(new Fact.Str("Alice"))
+        ]);
+        // Bind with Var
+        const b2 = Ast.BodyClause$Bind(new Ast.Var("x"), Ast.Part$Val(new Fact.Int(5)));
+
+        q.clauses = List.append(q.clauses, toList([b1, b2]));
+        const result = Engine.run(db, Q.to_query(q));
+        const rows = result.rows.toArray();
+        console.log("Rows UID:", rows);
+        expect(rows.length).toBe(1);
+        expect(Dict.get(rows[0], "x")[0]).toEqual(new Fact.Int(5));
     });
 });
