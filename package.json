@@ -1,13 +1,24 @@
 {
-    "name": "aarondb_edge",
-    "version": "1.0.0",
-    "description": "Edge-native AaronDB with Honi orchestration",
-    "main": "index.js",
+    "name": "@criticalinsight/aarondb-edge",
+    "version": "1.1.0",
+    "description": "Edge-native Datalog engine for sovereign agents. De-coupled from Cloudflare Workers but compatible.",
+    "main": "./src/index.js",
+    "module": "./src/index.js",
     "type": "module",
+    "files": [
+        "src",
+        "build",
+        "gleam.toml"
+    ],
+    "exports": {
+        ".": "./src/index.js",
+        "./worker": "./src/worker.js",
+        "./engine": "./build/dev/javascript/aarondb_edge/aarondb_edge/engine.mjs"
+    },
     "scripts": {
         "build": "gleam build",
-        "dev": "wrangler dev",
-        "deploy": "wrangler deploy",
+        "dev": "wrangler dev src/worker.js",
+        "deploy": "wrangler deploy src/worker.js",
         "test": "bun test test/coverage.test.ts",
         "test:coverage": "bun test test/coverage.test.ts --coverage"
     },
