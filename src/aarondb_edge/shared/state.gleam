@@ -1,4 +1,4 @@
-import aarondb_edge/fact.{type AttributeConfig, type Datom}
+import aarondb_edge/fact.{type AttributeConfig}
 import aarondb_edge/index.{type AIndex, type AVIndex, type Index}
 import aarondb_edge/shared/ast
 import aarondb_edge/storage/internal

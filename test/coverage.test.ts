@@ -19,6 +19,8 @@ import * as List from "../build/dev/javascript/gleam_stdlib/gleam/list.mjs";
 import { toList, Ok } from "../build/dev/javascript/aarondb_edge/gleam.mjs";
 // @ts-ignore
 import { Some, None } from "../build/dev/javascript/gleam_stdlib/gleam/option.mjs";
+// @ts-ignore
+import * as Tx from "../build/dev/javascript/aarondb_edge/aarondb_edge/transaction.mjs";
 
 function makeDb() {
     return State.new_state();
@@ -394,5 +396,45 @@ describe("AaronDB Engine Coverage", () => {
         console.log("Rows UID:", rows);
         expect(rows.length).toBe(1);
         expect(Dict.get(rows[0], "x")[0]).toEqual(new Fact.Int(5));
+    });
+
+    test("Datalog: Temporal As-Of and Retractions", () => {
+        let db = makeDb();
+
+        // Tx 1: entity 1 has age 30
+        const [db1, tx1] = Tx.transact(db, toList([
+            new Tx.TxOp(new Fact.EntityId(1), "age", new Fact.Int(30), new Fact.Assert())
+        ]));
+
+        // Tx 2: entity 1 has age 31 (Update: Retract old, Assert new)
+        const [db2, tx2] = Tx.transact(db1, toList([
+            new Tx.TxOp(new Fact.EntityId(1), "age", new Fact.Int(30), new Fact.Retract()),
+            new Tx.TxOp(new Fact.EntityId(1), "age", new Fact.Int(31), new Fact.Assert())
+        ]));
+
+        // Tx 3: entity 1 age is retracted
+        const [db3, tx3] = Tx.transact(db2, toList([
+            new Tx.TxOp(new Fact.EntityId(1), "age", new Fact.Int(31), new Fact.Retract())
+        ]));
+
+        // Query As-Of Tx 1
+        let q1 = Q.as_of(Q.where(Q.new$(), Q.v("e"), "age", Q.v("a")), tx1);
+        let res1 = Engine.run(db3, Q.to_query(q1));
+        let rows1 = res1.rows.toArray();
+        expect(rows1.length).toBe(1);
+        expect(Dict.get(rows1[0], "a")[0]).toEqual(new Fact.Int(30));
+
+        // Query As-Of Tx 2
+        let q2 = Q.as_of(Q.where(Q.new$(), Q.v("e"), "age", Q.v("a")), tx2);
+        let res2 = Engine.run(db3, Q.to_query(q2));
+        let rows2 = res2.rows.toArray();
+        expect(rows2.length).toBe(1);
+        expect(Dict.get(rows2[0], "a")[0]).toEqual(new Fact.Int(31));
+
+        // Query As-Of Tx 3 (Current state relative to Transaction 3)
+        let q3 = Q.as_of(Q.where(Q.new$(), Q.v("e"), "age", Q.v("a")), tx3);
+        let res3 = Engine.run(db3, Q.to_query(q3));
+        let rows3 = res3.rows.toArray();
+        expect(rows3.length).toBe(0);
     });
 });

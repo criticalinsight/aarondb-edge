@@ -6,7 +6,7 @@ import aarondb_edge/shared/query_types
 import aarondb_edge/shared/state
 import aarondb_edge/storage/internal
 import gleam/dict.{type Dict}
-// import gleam/int
+import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/order
@@ -48,7 +48,7 @@ pub fn run(
             list.fold(contexts, #([], current_store), fn(inner_acc, ctx) {
               let #(acc_ctxs, acc_store) = inner_acc
               let #(new_ctxs, clause_store) =
-                solve_clause(db_state, clause, ctx)
+                solve_clause(db_state, clause, ctx, query.as_of)
               #(
                 list.append(acc_ctxs, new_ctxs),
                 merge_optional_stores(acc_store, clause_store),
@@ -109,16 +109,17 @@ fn solve_clause(
   db_state: state.DbState,
   clause: ast.BodyClause,
   ctx: Dict(String, fact.Value),
+  tx_limit: Option(Int),
 ) -> #(
   List(Dict(String, fact.Value)),
   Option(Dict(String, List(internal.StorageChunk))),
 ) {
   case clause {
     ast.Positive(triple) -> {
-      solve_positive(db_state, triple, ctx)
+      solve_positive(db_state, triple, ctx, tx_limit)
     }
     ast.Negative(triple) -> {
-      let #(results, store) = solve_positive(db_state, triple, ctx)
+      let #(results, store) = solve_positive(db_state, triple, ctx, tx_limit)
       case results {
         [] -> #([ctx], store)
         _ -> #([], store)
@@ -147,6 +148,7 @@ fn solve_positive(
   db_state: state.DbState,
   triple: ast.Clause,
   ctx: Dict(String, fact.Value),
+  tx_limit: Option(Int),
 ) -> #(
   List(Dict(String, fact.Value)),
   Option(Dict(String, List(internal.StorageChunk))),
@@ -155,7 +157,7 @@ fn solve_positive(
   let e_val = resolve_part(e_p, ctx)
   let v_val = resolve_part(v_p, ctx)
 
-  // Simplified: Only check memory indices
+  // Retrieve from indices
   let datoms = case e_val, v_val {
     Some(fact.Ref(eid)), Some(v) ->
       index.get_datoms_by_entity_attr_val(db_state.eavt, eid, attr, v)
@@ -166,14 +168,40 @@ fn solve_positive(
     _, _ -> []
   }
 
+  // Apply temporal filter
+  let datoms = case tx_limit {
+    Some(max_tx) -> list.filter(datoms, fn(d) { d.tx <= max_tx })
+    None -> datoms
+  }
+
+  // Resolve the effective state as of the tx_limit. 
+  // We sort by tx and tx_index to get chronological order.
+  // Then we group by E-A-V and take the latest.
   let results =
-    list.flat_map(datoms, fn(d) {
+    datoms
+    |> list.sort(fn(d1, d2) {
+      case int.compare(d1.tx, d2.tx) {
+        order.Eq -> int.compare(d1.tx_index, d2.tx_index)
+        other -> other
+      }
+    })
+    |> list.fold(dict.new(), fn(acc, d) {
+      let key = #(d.entity, d.attribute, d.value)
+      dict.insert(acc, key, d.operation)
+    })
+    |> dict.to_list()
+    |> list.filter(fn(pair) {
+      let #(_, op) = pair
+      op == fact.Assert
+    })
+    |> list.flat_map(fn(pair) {
+      let #(#(entity, _attr, value), _op) = pair
       let next_ctx = case e_p {
-        ast.Var(name) -> dict.insert(ctx, name, fact.Ref(d.entity))
+        ast.Var(name) -> dict.insert(ctx, name, fact.Ref(entity))
         _ -> ctx
       }
       let next_ctx = case v_p {
-        ast.Var(name) -> dict.insert(next_ctx, name, d.value)
+        ast.Var(name) -> dict.insert(next_ctx, name, value)
         _ -> next_ctx
       }
       [next_ctx]

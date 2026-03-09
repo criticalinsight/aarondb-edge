@@ -12,11 +12,19 @@ pub type QueryBuilder {
     order_by: Option(ast.OrderBy),
     limit: Option(Int),
     offset: Option(Int),
+    as_of: Option(Int),
   )
 }
 
 pub fn new() -> QueryBuilder {
-  QueryBuilder(find: [], clauses: [], order_by: None, limit: None, offset: None)
+  QueryBuilder(
+    find: [],
+    clauses: [],
+    order_by: None,
+    limit: None,
+    offset: None,
+    as_of: None,
+  )
 }
 
 pub fn from_clauses(clauses: List(BodyClause)) -> QueryBuilder {
@@ -26,6 +34,7 @@ pub fn from_clauses(clauses: List(BodyClause)) -> QueryBuilder {
     order_by: None,
     limit: None,
     offset: None,
+    as_of: None,
   )
 }
 
@@ -36,6 +45,7 @@ pub fn select(vars: List(String)) -> QueryBuilder {
     order_by: None,
     limit: None,
     offset: None,
+    as_of: None,
   )
 }
 
@@ -111,6 +121,10 @@ pub fn order_by(
   QueryBuilder(..builder, order_by: Some(ast.OrderBy(variable, direction)))
 }
 
+pub fn as_of(builder: QueryBuilder, tx_id: Int) -> QueryBuilder {
+  QueryBuilder(..builder, as_of: Some(tx_id))
+}
+
 pub fn to_query(builder: QueryBuilder) -> ast.Query {
   ast.Query(
     find: builder.find,
@@ -118,5 +132,6 @@ pub fn to_query(builder: QueryBuilder) -> ast.Query {
     order_by: builder.order_by,
     limit: builder.limit,
     offset: builder.offset,
+    as_of: builder.as_of,
   )
 }

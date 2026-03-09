@@ -19,6 +19,7 @@ pub type Query {
     order_by: Option(OrderBy),
     limit: Option(Int),
     offset: Option(Int),
+    as_of: Option(Int),
   )
 }
 

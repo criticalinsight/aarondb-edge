@@ -4,6 +4,8 @@ import { new_state } from "../build/dev/javascript/aarondb_edge/aarondb_edge/sha
 import { where, to_query, v, s, new as newQuery } from "../build/dev/javascript/aarondb_edge/aarondb_edge/q.mjs";
 import { ref, Str, Int, Float, Bool, Assert, Retract, All, new_datom, cosine_similarity } from "../build/dev/javascript/aarondb_edge/aarondb_edge/fact.mjs";
 import { insert_eavt, insert_aevt } from "../build/dev/javascript/aarondb_edge/aarondb_edge/index.mjs";
+import { transact, TxOp } from "../build/dev/javascript/aarondb_edge/aarondb_edge/transaction.mjs";
+import { as_of } from "../build/dev/javascript/aarondb_edge/aarondb_edge/q.mjs";
 
 /**
  * Value Serializer for D1
@@ -60,32 +62,40 @@ export class AaronDBState {
         if (url.pathname === "/query") {
             const queryBody = await request.json().catch(() => ({}));
             // Default query if none provided
-            const q = queryBody.q ? queryBody.q : to_query(where(newQuery(), v("e"), "type", s("agent")));
+            const qBody = queryBody.q ? queryBody.q : to_query(where(newQuery(), v("e"), "type", s("agent")));
 
-            const result = run(this.db, q);
+            // Support Temporal Query
+            let finalQuery = qBody;
+            if (queryBody.asOf) {
+                // We wrap the AST query to apply temporal constraint
+                // Note: In a real system we'd have a robust JSON->AST parser
+                // For now we assume queryBody.q is a valid AST or we use the builder
+                // This is a simplified demonstration of the 'as_of' injection
+                const builder = { ...newQuery(), clauses: qBody.where, find: qBody.find };
+                finalQuery = to_query(as_of(builder, queryBody.asOf));
+            }
+
+            const result = run(this.db, finalQuery);
             return new Response(JSON.stringify(result), {
                 headers: { "Content-Type": "application/json" }
             });
         }
 
         if (url.pathname === "/insert") {
-            const { e, a, v: val, tx, txi } = await request.json();
-            const timestamp = Date.now();
-            const transaction = tx || timestamp;
-            const index = txi || 0;
+            const { e, a, v: val } = await request.json();
+            const operation = Assert; // Could be passed in
+            const txOp = new TxOp(ref(e), a, val, operation);
 
-            const datom = new_datom(ref(e), a, val, transaction, index, Assert);
-
-            // 1. Update In-Memory Index (O(1) Reasoning)
-            this.db.eavt = insert_eavt(this.db.eavt, datom, All);
-            this.db.aevt = insert_aevt(this.db.aevt, datom, All);
+            // 1. Update In-Memory via Transactor (Atomic + Monotonic)
+            const [newState, finalTx] = transact(this.db, [txOp]);
+            this.db = newState;
 
             // 2. Persist to D1 (Async Durability)
             const opId = 1; // Assert
             this.state.waitUntil(
                 this.env.DB.prepare(
                     "INSERT INTO facts (agent_id, entity, attribute, value, tx, tx_index, valid_time, operation) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-                ).bind(this.agentId, e, a, serializeValue(val), transaction, index, 0, opId).run()
+                ).bind(this.agentId, e, a, serializeValue(val), finalTx, 0, 0, opId).run()
             );
 
             // 3. Auto-Embedding for Strings
@@ -97,14 +107,25 @@ export class AaronDBState {
                         });
                         const vector = data[0];
                         const vFact = { type: "Vec", data: vector };
-                        const vDatom = new_datom(ref(e), "embedding", vFact, transaction, index + 1, Assert);
+                        const vTxOp = new TxOp(ref(e), "embedding", vFact, Assert);
 
-                        this.db.eavt = insert_eavt(this.db.eavt, vDatom, All);
-                        this.db.aevt = insert_aevt(this.db.aevt, vDatom, All);
+                        // Commit embedding as a separate transaction or fold into existing?
+                        // For simplicity in this demo, we run another transaction.
+                        const [s2, tx2] = transact(this.db, [vTxOp]);
+                        this.db = s2;
 
+                        // 4. Persistence to D1
                         await this.env.DB.prepare(
                             "INSERT INTO facts (agent_id, entity, attribute, value, tx, tx_index, valid_time, operation) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-                        ).bind(this.agentId, e, "embedding", serializeValue(vFact), transaction, index + 1, 0, opId).run();
+                        ).bind(this.agentId, e, "embedding", serializeValue(vFact), tx2, 0, 0, opId).run();
+
+                        // 5. Wire Dormant Infrastructure: Cloudflare Vectorize
+                        // Upsert to native vector index for global top-k scale
+                        await this.env.VECTOR_INDEX.upsert([{
+                            id: `${this.agentId}:${e}:${tx2}`,
+                            values: vector,
+                            metadata: { agentId: this.agentId, entity: e, tx: tx2 }
+                        }]);
                     } catch (err) {
                         console.error("Auto-Embedding Error:", err);
                     }
@@ -112,6 +133,55 @@ export class AaronDBState {
             }
 
             return new Response("Fact asserted and logged", { status: 201 });
+        }
+
+        if (url.pathname === "/checkpoint") {
+            const snapshot = JSON.stringify(this.db);
+            const key = `snapshots/${this.agentId}/${Date.now()}.json`;
+            await this.env.ARCHIVE.put(key, snapshot);
+            return new Response(`Snapshot saved to R2 as ${key}`, { status: 200 });
+        }
+
+        if (url.pathname === "/semantic-search") {
+            const { queryVector, threshold, sinceTx } = await request.json();
+
+            // 1. Native Vectorize Lookup
+            const vectorResults = await this.env.VECTOR_INDEX.query(queryVector, {
+                topK: 100,
+                filter: { agentId: this.agentId }
+            });
+
+            if (vectorResults.matches && vectorResults.matches.length > 0) {
+                const results = vectorResults.matches
+                    .filter(m => m.metadata.tx >= (sinceTx || 0) && m.score >= (threshold || 0.8))
+                    .map(m => ({
+                        entity: m.metadata.entity,
+                        score: m.score,
+                        tx: m.metadata.tx
+                    }));
+                return new Response(JSON.stringify(results), {
+                    headers: { "Content-Type": "application/json" }
+                });
+            }
+
+            // 2. Fallback to Brute-Force
+            const qb = newQuery();
+            const q = to_query(where(qb, v("e"), "embedding", v("v"))); // Simplified
+            const candidates = run(this.db, q);
+            const filtered = candidates.filter(row => {
+                const val = row[2];
+                const tx = row[3];
+                if (tx < (sinceTx || 0)) return false;
+                if (val && val.data && val.type === "Vec") {
+                    const score = cosine_similarity(queryVector, val.data);
+                    return score >= (threshold || 0.8);
+                }
+                return false;
+            }).map(row => ({ entity: row[0].data, score: threshold, tx: row[3] })); // Rough map
+
+            return new Response(JSON.stringify(filtered), {
+                headers: { "Content-Type": "application/json" }
+            });
         }
 
         return new Response("Not Found", { status: 404 });
@@ -161,28 +231,14 @@ class AaronDBClient {
 
     /**
      * Agentic RAG: Semantic Join
-     * Fetches candidates via similarity, then filters via Datalog logic.
+     * Calls the Durable Object's semantic-search endpoint.
      */
     async semanticSearch(queryVector, attribute, threshold = 0.8, sinceTx = 0) {
-        // 1. Get all candidate facts for this attribute
-        const qb = newQuery();
-        const q = to_query(where(qb, v("e"), attribute, v("v")));
-        const candidates = await this.query(q);
-
-        // 2. Filter by similarity + Temporal Logic using the Engine FFI
-        return candidates.filter(row => {
-            const val = row[2]; // Index 2 is the 'Value'
-            const tx = row[3];  // Index 3 is the 'Tx' in our simplified query result
-
-            // Temporal Filter
-            if (tx < sinceTx) return false;
-
-            if (val && val.data && val.type === "Vec") {
-                const score = cosine_similarity(queryVector, val.data);
-                return score >= threshold;
-            }
-            return false;
-        });
+        const res = await this.do.fetch(new Request("http://do/semantic-search", {
+            method: "POST",
+            body: JSON.stringify({ queryVector, threshold, sinceTx })
+        }));
+        return res.json();
     }
 
     /**
