@@ -59,6 +59,37 @@ pub fn run(
       }
     })
 
+  // Apply top-level transformations from the Query object
+  let rows = case query.order_by {
+    Some(ast.OrderBy(var, dir)) -> {
+      list.sort(rows, fn(a, b) {
+        let val_a = dict.get(a, var) |> result.unwrap(fact.Int(0))
+        let val_b = dict.get(b, var) |> result.unwrap(fact.Int(0))
+        let ord = fact.compare(val_a, val_b)
+        case dir {
+          ast.Asc -> ord
+          ast.Desc ->
+            case ord {
+              order.Lt -> order.Gt
+              order.Gt -> order.Lt
+              order.Eq -> order.Eq
+            }
+        }
+      })
+    }
+    None -> rows
+  }
+
+  let rows = case query.offset {
+    Some(n) -> list.drop(rows, n)
+    None -> rows
+  }
+
+  let rows = case query.limit {
+    Some(n) -> list.take(rows, n)
+    None -> rows
+  }
+
   query_types.QueryResult(
     rows: rows |> list.unique(),
     metadata: query_types.QueryMetadata(
