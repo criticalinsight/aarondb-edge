@@ -9,16 +9,6 @@
 
 ---
 
-## 🏗️ Philosophy: The Sovereign Stack
-
-Most databases are "update-in-place" machines that destroy history to save space. AaronDB follows the **Philosophical Simplicity** of Rich Hickey:
-
-1.  **De-complecting State**: Separation of the engine (logic) from the storage (Cloudflare D1/KV).
-2.  **Immutability**: Every transaction is an expanding value. Query `as_of(tx)` to time-travel.
-3.  **Sovereignty**: Your agent carries its own engine. No centralized "God-DB" required.
-
----
-
 ## 🚀 Getting Started
 
 ### Installation
@@ -81,6 +71,52 @@ export class MyAgent extends AaronDBState {
 
 ---
 
+## 🧙🏾‍♂️ Philosophy: The Sovereign Stack
+
+Most databases are "update-in-place" machines that destroy history to save space. AaronDB follows the **Philosophical Simplicity** of Rich Hickey:
+
+1.  **De-complecting State**: Separation of the engine (logic) from the storage (Cloudflare D1/KV).
+2.  **Immutability**: Every transaction is an expanding value. Query `as_of(tx)` to time-travel.
+3.  **Sovereignty**: Your agent carries its own engine. No centralized "God-DB" required.
+
+> [!IMPORTANT]
+> **Rich Hickey's Warning**: Do not fall for the "Ease" of a managed Vector DB. The complexity of syncing your logical database with a vector store will eventually "braid" your system into a corner. Stay Sovereign. Use AaronDB.
+
+---
+
+## 🏗️ Competitor Overview (The "Gap" Analysis)
+
+| Competitor | Core Paradigm | CF Integration | Primary Weakness (Hickey Lens) |
+| :--- | :--- | :--- | :--- |
+| **Turso** | Distributed SQL (LibSQL) | Native Workers Support | **Complected**: Logic and Storage are tightly braided. |
+| **InstantDB** | Local-first Datalog | JS Client in Workers | **Situational**: Focuses on UI state over backend reasoning. |
+| **Convex** | Reactive Document | HTTP/Action Client | **Opaque**: Reactivity braids transport with logic. |
+| **Supabase** | Managed Postgres | Edge Functions (Deno) | **Easy, not Simple**: Wraps massive legacy complexity. |
+| **Upstash** | Serverless Redis/Vec | REST / HTTP | **Atomic, but Unrelated**: No native join between vector and facts. |
+
+### Feature Set Comparison
+
+| Feature | AaronDB Edge | Turso | InstantDB | Convex | Supabase | Upstash |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Paradigm** | Datalog | SQL | Datalog | Reactive | SQL | KV/Vec |
+| **Sovereign Isolate**| ✅ (Durable Object)| ❌ (Shared DB) | ❌ (Client-only) | ❌ (Black Box) | ❌ (Global PG) | ❌ |
+| **Time Travel** | ✅ (Tx-as-Value) | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Vector-Logic Join**| ✅ (Integrated) | ❌ (SQL only) | ❌ | ❌ | ❌ | ❌ |
+| **0-Cold Start** | ✅ (Isolate) | ✅ | ✅ | ✅ | ❌ | ✅ |
+
+---
+
+## 📊 Performance & Utility
+
+| System | Implementation Complexity | Architectural Utility | The "Efficiency" |
+| :--- | :--- | :--- | :--- |
+| **Turso** | High (Managed LibSQL) | Moderate (Standard SQL) | Low (SQL is noisy at edge) |
+| **AaronDB** | **Low (Embedded Engine)** | **Maximum (Logical RAG)** | **High (O(1) in-RAM logic)** |
+| **Supabase** | Very High (Full PG) | High (Relational) | Low (Heavy infra overlap) |
+| **InstantDB**| Low (Graph-like) | Moderate (Sync only) | High (Client-side) |
+
+---
+
 ## 🗺️ System Architecture
 
 AaronDB Edge packages logic, state, and persistence into a single cohesive unit on the Cloudflare Edge.
@@ -97,6 +133,18 @@ graph TD
         DO -->|Semantic| AI[Workers AI / Vectorize]
     end
 ```
+
+### Integrated Stack Hierarchies
+
+| Layer | Service | Status | Role |
+| :--- | :--- | :--- | :--- |
+| **Routing** | **Honi** | Active | Request lifecycle and Context management. |
+| **Discovery** | **KV Namespace** | Active | Resolving agent names to stable DO IDs. |
+| **Hot State** | **Durable Objects** | Active | Consistent in-memory execution. |
+| **Durability** | **D1 Database** | Active | The immutable fact log. |
+| **Cold Storage** | **R2 Bucket** | Active | Periodic state checkpoints. |
+| **Intelligence** | **Workers AI** | Active | On-the-fly vector embedding. |
+| **Semantic Cache**| **Vectorize** | **Active** | Native high-performance vector search. |
 
 ---
 
