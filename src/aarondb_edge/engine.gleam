@@ -242,7 +242,7 @@ fn compile_predicate(expr: ast.Expression) -> fn(Dict(String, fact.Value)) -> Bo
   }
 }
 
-fn merge_optional_stores(
+pub fn merge_optional_stores(
   s1: Option(Dict(String, List(internal.StorageChunk))),
   s2: Option(Dict(String, List(internal.StorageChunk))),
 ) -> Option(Dict(String, List(internal.StorageChunk))) {

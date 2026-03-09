@@ -1,0 +1,72 @@
+bun test v1.3.6 (d530ed99)
+
+test/coverage.test.ts:
+(pass) AaronDB Engine Coverage > Datalog: Simple Fact Retrieval [2.57ms]
+(pass) AaronDB Engine Coverage > Datalog: Multi-clause Join [0.47ms]
+(pass) AaronDB Engine Coverage > Datalog: Negation [0.54ms]
+(pass) AaronDB Engine Coverage > Datalog: Filter (Manual AST) [0.87ms]
+(pass) AaronDB Engine Coverage > Datalog: Ordering and Limits [0.50ms]
+Deprecated BitArray.buffer property used in JavaScript FFI code. Use BitArray.byteAt() or BitArray.rawBuffer instead.
+(pass) AaronDB Engine Coverage > Serialization: Fact Encoding/Decoding [1.31ms]
+(pass) AaronDB Engine Coverage > FFI: Semantic Search Utilities [0.11ms]
+(pass) AaronDB Engine Coverage > Datalog: Predicates and Boolean Logic [0.28ms]
+(pass) AaronDB Engine Coverage > Datalog: Offset and Ascending Order [0.12ms]
+(pass) AaronDB Engine Coverage > Datalog: Engine Edge Cases [0.25ms]
+(pass) AaronDB Engine Coverage > Datalog: Embedded Clause Types [0.31ms]
+(pass) AaronDB Engine Coverage > Serialization: Exhaustive Value Types [0.31ms]
+(pass) AaronDB Engine Coverage > Datalog: Descending Order and Offset [0.27ms]
+Rows OR: [
+  Dict {
+    size: 2,
+    root: {
+      datamap: 524320,
+      nodemap: 0,
+      data: [ "e", [Object ...], "s", [Object ...] ],
+      [Symbol()]: 2,
+    },
+  }
+]
+(pass) AaronDB Engine Coverage > Datalog: Predicates Or, Neq, Gt edge cases
+Rows UID: [
+  Dict {
+    size: 1,
+    root: {
+      datamap: 16777216,
+      nodemap: 0,
+      data: [ "x", [Object ...] ],
+      [Symbol()]: 1,
+    },
+  }
+]
+(pass) AaronDB Engine Coverage > Datalog: Engine Uid and Bind edge cases
+(pass) AaronDB Engine Coverage > Datalog: Temporal As-Of and Retractions [1.06ms]
+(pass) AaronDB Engine Coverage > Fact/AST Exhaustive Constructors and Generated Types [11.44ms]
+(pass) AaronDB Engine Coverage > Engine Branch Coverage Corrector [0.86ms]
+(pass) AaronDB Engine Coverage > Index Retention Policies
+(pass) AaronDB Engine Coverage > Query Builder Extra Coverage
+
+build/dev/javascript/aarondb_edge/engine_test.mjs:
+
+build/dev/javascript/aarondb_edge/aarondb_edge_test.mjs:
+
+build/dev/javascript/aarondb_edge/coverage.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module '../build/dev/javascript/aarondb_edge/aarondb_edge/engine.mjs' from '/Users/brixelectronics/Documents/aarondb_edge/build/dev/javascript/aarondb_edge/coverage.test.ts'
+-------------------------------
+
+
+build/dev/javascript/aarondb_edge/coverage.test.js:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module '../build/dev/javascript/aarondb_edge/aarondb_edge/engine.mjs' from '/Users/brixelectronics/Documents/aarondb_edge/build/dev/javascript/aarondb_edge/coverage.test.js'
+-------------------------------
+
+
+ 20 pass
+ 2 fail
+ 2 errors
+ 96 expect() calls
+Ran 22 tests across 5 files. [67.00ms]

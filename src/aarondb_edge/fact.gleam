@@ -258,8 +258,7 @@ pub fn decode_compact(bits: BitArray) -> Result(#(Value, BitArray), Nil) {
 }
 
 fn slice_bits(bits: BitArray, len: Int) -> #(BitArray, BitArray) {
-  let assert Ok(s) = bit_array.slice(bits, 0, len)
-  let assert Ok(rest) = bit_array.slice(bits, len, byte_size(bits) - len)
+  let assert <<s:bytes-size(len), rest:bits>> = bits
   #(s, rest)
 }
 

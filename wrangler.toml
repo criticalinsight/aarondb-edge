@@ -11,16 +11,16 @@ class_name = "AaronDBState"
 
 [[kv_namespaces]]
 binding = "CONFIG_KV"
-id = "place-holder-id"
+id = "18d069c7c513455998a652e634d19450"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "aarondb-log"
-database_id = "place-holder-id"
+database_id = "611999cf-c830-41c9-aede-796af91eb01c"
 
-[[r2_buckets]]
-binding = "ARCHIVE"
-bucket_name = "aarondb-archive"
+# [[r2_buckets]]
+# binding = "ARCHIVE"
+# bucket_name = "aarondb-archive"
 
 [ai]
 binding = "AI"
@@ -31,4 +31,4 @@ index_name = "aarondb-vectors"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["AaronDBState"]
+new_sqlite_classes = ["AaronDBState"]

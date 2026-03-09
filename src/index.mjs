@@ -1,7 +1,7 @@
-import { Honi } from "@stukennedy/honi";
-import { run } from "../build/dev/javascript/aarondb_edge/aarondb_edge.mjs";
+import { Hono } from "hono";
+import { run } from "../build/dev/javascript/aarondb_edge/aarondb_edge/engine.mjs";
 import { new_state } from "../build/dev/javascript/aarondb_edge/aarondb_edge/shared/state.mjs";
-import { where, to_query, v, s, new as newQuery } from "../build/dev/javascript/aarondb_edge/aarondb_edge/q.mjs";
+import { where, to_query, v, s, new$ as newQuery } from "../build/dev/javascript/aarondb_edge/aarondb_edge/q.mjs";
 import { ref, Str, Int, Float, Bool, Assert, Retract, All, new_datom, cosine_similarity } from "../build/dev/javascript/aarondb_edge/aarondb_edge/fact.mjs";
 import { insert_eavt, insert_aevt } from "../build/dev/javascript/aarondb_edge/aarondb_edge/index.mjs";
 import { transact, TxOp } from "../build/dev/javascript/aarondb_edge/aarondb_edge/transaction.mjs";
@@ -273,7 +273,7 @@ class AaronDBClient {
     }
 }
 
-const app = new Honi();
+const app = new Hono();
 
 app.get("/", (c) => {
     return c.text("AaronDB Edge: Unified Sovereign Stack Active");
