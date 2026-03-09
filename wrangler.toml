@@ -15,19 +15,19 @@ id = "place-holder-id"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "aarondb_log"
+database_name = "aarondb-log"
 database_id = "place-holder-id"
 
 [[r2_buckets]]
 binding = "ARCHIVE"
-bucket_name = "aarondb_archive"
+bucket_name = "aarondb-archive"
 
 [ai]
 binding = "AI"
 
 [[vectorize]]
 binding = "VECTOR_INDEX"
-index_name = "aarondb_vectors"
+index_name = "aarondb-vectors"
 
 [[migrations]]
 tag = "v1"
